@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TaskFlow — To Do</title>
+  <link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0c0c0e;
+      --surface: #131316;
+      --card: #1a1a1f;
+      --card-hover: #202026;
+      --border: #2a2a32;
+      --border-light: #35353f;
+      --accent: #7c6aff;
+      --accent-glow: rgba(124,106,255,0.15);
+      --accent-light: #a597ff;
+      --green: #34d399;
+      --green-bg: rgba(52,211,153,0.1);
+      --red: #f87171;
+      --red-bg: rgba(248,113,113,0.1);
+      --yellow: #fbbf24;
+      --yellow-bg: rgba(251,191,36,0.1);
+      --text: #f1f0ff;
+      --text-muted: #6b6a7d;
+      --text-sub: #9998ab;
+      --shadow: 0 4px 32px rgba(0,0,0,0.5);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Cabinet Grotesk', sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(124,106,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,255,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 400px;
+      background: radial-gradient(ellipse, rgba(124,106,255,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .wrapper {
+      position: relative; z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 56px 24px 80px;
+    }
+
+    /* HEADER */
+    .header {
+      margin-bottom: 52px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .logo-mark {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), #b06aff);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 24px rgba(124,106,255,0.3);
+    }
+
+    h1 {
+      font-family: 'Clash Display', sans-serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      line-height: 1;
+      background: linear-gradient(135deg, #f1f0ff 30%, var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .sub {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-sub);
+    }
+
+    .stat-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .stat-num { font-weight: 700; color: var(--text); }
+
+    /* FLASH */
+    .flash {
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: fadeIn 0.3s ease;
+    }
+    .flash.success { background: var(--green-bg); border: 1px solid rgba(52,211,153,0.25); color: var(--green); }
+    .flash.error   { background: var(--red-bg);   border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
+
+    /* ADD CARD */
+    .add-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      transition: border-color 0.3s;
+    }
+    .add-card:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), 0 0 32px var(--accent-glow);
+    }
+
+    .add-card-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .add-card-header .icon {
+      width: 32px; height: 32px;
+      background: var(--accent-glow);
+      border: 1px solid rgba(124,106,255,0.3);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    .add-card-header span {
+      font-family: 'Clash Display', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-sub);
+      letter-spacing: 0.3px;
+    }
+
+    .add-form {
+      padding: 22px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 14px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .field input, .field select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none; -webkit-appearance: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .field input::placeholder { color: var(--text-muted); }
+    .field select option { background: var(--card); }
+
+    .add-btn {
+      background: linear-gradient(135deg, var(--accent), #9b6aff);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 22px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      height: 42px;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(124,106,255,0.3);
+    }
+    .add-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(124,106,255,0.4); }
+    .add-btn:active { transform: translateY(0); }
+
+    /* SECTION HEADER */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-family: 'Clash Display', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 99px;
+    }
+
+    .task-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 3px 12px;
+    }
+
+    /* TASK CARDS */
+    .task-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .task-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+      animation: slideIn 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .task-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .task-card:hover { border-color: var(--border-light); background: var(--card-hover); transform: translateX(4px); }
+    .task-card:hover::before { opacity: 1; }
+    .task-card.status-pending::before     { background: var(--yellow); }
+    .task-card.status-completed::before   { background: var(--green); }
+    .task-card.status-in-progress::before { background: var(--accent); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-num {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Clash Display', sans-serif;
+      font-size: 12px; font-weight: 600;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .task-title {
+      font-family: 'Clash Display', sans-serif;
+      font-size: 16px; font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+
+    .task-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .task-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .status-badge {
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 6px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .badge-pending    { background: var(--yellow-bg); color: var(--yellow); }
+    .badge-completed  { background: var(--green-bg);  color: var(--green);  }
+    .badge-default    { background: var(--accent-glow); color: var(--accent-light); }
+
+    .task-id {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'Courier New', monospace;
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    /* ACTIONS */
+    .task-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+    .edit-toggle-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .edit-toggle-btn:hover { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-bg); }
+
+    .delete-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 34px; height: 34px;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .delete-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+
+    /* INLINE EDIT PANEL */
+    .edit-panel {
+      display: none;
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .edit-panel.open { display: block; }
+
+    .edit-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .edit-grid .field input,
+    .edit-grid .field select { background: var(--bg); }
+
+    .save-btn {
+      background: var(--green-bg);
+      border: 1px solid rgba(52,211,153,0.3);
+      color: var(--green);
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-family: 'Cabinet Grotesk', sans-serif;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      height: 42px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .save-btn:hover { background: var(--green); color: #000; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+    .empty h3 {
+      font-family: 'Clash Display', sans-serif;
+      font-size: 1.1rem; font-weight: 600;
+      color: var(--text-sub); margin-bottom: 6px;
+    }
+    .empty p { font-size: 14px; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 700px) {
+      .add-form, .edit-grid { grid-template-columns: 1fr; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .task-card { grid-template-columns: auto 1fr; }
+      .task-actions { grid-column: 1 / -1; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-row">
+        <div class="logo-mark">✦</div>
+        <h1>TaskFlow</h1>
+      </div>
+      <p class="sub">Your tasks, beautifully organized.</p>
+    </div>
+    <div class="stats-row">
+      <div class="stat-pill">
+        <span class="dot" style="background:#7c6aff"></span>
+        Total <span class="stat-num"><%= task.length %></span>
+      </div>
+      <div class="stat-pill">
+        <span class="dot" style="background:#34d399"></span>
+        Completed <span class="stat-num"><%= task.filter(t => t.Status && t.Status.toLowerCase() === 'completed').length %></span>
+      </div>
+      <div class="stat-pill">
+        <span class="dot" style="background:#fbbf24"></span>
+        Pending <span class="stat-num"><%= task.filter(t => !t.Status || t.Status.toLowerCase() === 'pending').length %></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- FLASH MESSAGES -->
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="flash success">✅ <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="flash error">❌ <%= error %></div>
+  <% } %>
+
+  <!-- ADD TASK -->
+  <div class="add-card">
+    <div class="add-card-header">
+      <div class="icon">＋</div>
+      <span>Add New Task</span>
+    </div>
+    <form action="/tasks/add" method="POST">
+      <div class="add-form">
+        <div class="field">
+          <label>Title *</label>
+          <input type="text" name="title" placeholder="What needs to be done?" required maxlength="100"/>
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <input type="text" name="description" placeholder="Optional details..."/>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select name="status">
+            <option value="Pending">⏳ Pending</option>
+            <option value="In Progress">🔄 In Progress</option>
+            <option value="Completed">✅ Completed</option>
+          </select>
+        </div>
+        <button type="submit" class="add-btn">Add Task</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- TASK LIST -->
+  <div class="section-header">
+    <span class="section-title">All Tasks</span>
+    <span class="task-count"><%= task.length %> task<%= task.length !== 1 ? 's' : '' %></span>
+  </div>
+
+  <% if (task.length === 0) { %>
+    <div class="empty">
+      <div class="empty-icon">✨</div>
+      <h3>No tasks yet!</h3>
+      <p>Add your first task above to get started.</p>
+    </div>
+  <% } else { %>
+    <div class="task-list">
+      <% let id = 1; %>
+      <% task.forEach(function(t) { %>
+        <%
+          const statusLow = (t.Status || 'pending').toLowerCase().replace(/\s+/g,'-');
+          let badgeClass = 'badge-default';
+          if (statusLow === 'pending')    badgeClass = 'badge-pending';
+          if (statusLow === 'completed')  badgeClass = 'badge-completed';
+        %>
+        <div class="task-card status-<%= statusLow %>">
+
+          <div class="task-num"><%= id %></div>
+
+          <div class="task-body">
+            <div class="task-title"><%= t.title %></div>
+            <% if (t.description) { %>
+              <div class="task-desc"><%= t.description %></div>
+            <% } %>
+            <div class="task-meta">
+              <span class="status-badge <%= badgeClass %>"><%= t.Status || 'Pending' %></span>
+              <span class="task-id"><%= t._id %></span>
+            </div>
+
+            <!-- Inline Edit Panel -->
+            <div class="edit-panel" id="edit-<%= t._id %>">
+              <form action="/tasks/<%= t._id %>?_method=PUT" method="POST">
+                <div class="edit-grid">
+                  <div class="field">
+                    <label>Title</label>
+                    <input type="text" name="title" value="<%= t.title %>" required/>
+                  </div>
+                  <div class="field">
+                    <label>Description</label>
+                    <input type="text" name="description" value="<%= t.description || '' %>"/>
+                  </div>
+                  <div class="field">
+                    <label>Status</label>
+                    <select name="status">
+                      <option value="Pending"     <%= t.Status === 'Pending'     ? 'selected' : '' %>>⏳ Pending</option>
+                      <option value="In Progress" <%= t.Status === 'In Progress' ? 'selected' : '' %>>🔄 In Progress</option>
+                      <option value="Completed"   <%= t.Status === 'Completed'   ? 'selected' : '' %>>✅ Completed</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="save-btn">💾 Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="task-actions">
+            <button class="edit-toggle-btn" onclick="toggleEdit('<%= t._id %>', this)" type="button" title="Edit">✏️</button>
+            <form action="/tasks/<%= t._id %>?_method=DELETE" method="POST" style="display:inline"
+                  onsubmit="return confirm('Delete this task?')">
+              <button type="submit" class="delete-btn" title="Delete">🗑️</button>
+            </form>
+          </div>
+
+        </div>
+        <% id++; %>
+      <% }); %>
+    </div>
+  <% } %>
+
+</div>
+
+<script>
+  function toggleEdit(id, btn) {
+    const panel = document.getElementById('edit-' + id);
+    const isOpen = panel.classList.toggle('open');
+    btn.style.borderColor = isOpen ? 'var(--yellow)' : '';
+    btn.style.color       = isOpen ? 'var(--yellow)' : '';
+    btn.style.background  = isOpen ? 'var(--yellow-bg)' : '';
+    btn.textContent       = isOpen ? '✕' : '✏️';
+  }
+
+  setTimeout(() => {
+    document.querySelectorAll('.flash').forEach(el => {
+      el.style.transition = 'opacity 0.5s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 500);
+    });
+  }, 4000);
+</script>
+</body>
+</html>
