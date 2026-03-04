@@ -15,7 +15,7 @@ app.use(cookieParser());
 app.use(express.json())
 
 
-connecttomongoose("mongodb://127.0.0.1:27017/todo").then(()=>{
+connecttomongoose(process.env.MONGO_URL).then(()=>{
   console.log("mongodb is connected")
 })
 app.set("view engine","ejs");
